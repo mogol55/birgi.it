@@ -1,0 +1,12 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../core/helpers.php';require_once __DIR__ . '/../core/auth.php';require_once __DIR__ . '/../core/storage.php';require_once __DIR__ . '/../core/csrf.php';require_once __DIR__ . '/../core/upload.php';
+start_secure_session(); ensure_data_files(); require_admin();
+if ($_SERVER['REQUEST_METHOD']==='POST') { csrf_validate();
+ $playlist=read_json(PLAYLIST_FILE); backup_playlist();
+ $id=generate_track_id($_POST['title']??'track');
+ $mp3='tracks/'.upload_file($_FILES['track_file'], TRACKS_DIR, ['mp3'], ['audio/mpeg','audio/mp3']);
+ $cover=''; if (!empty($_FILES['cover_file']['name'])) $cover='covers/'.upload_file($_FILES['cover_file'], COVERS_DIR, ['jpg','jpeg','png','webp'], ['image/jpeg','image/png','image/webp']);
+ $playlist[]=['id'=>$id,'order'=>(int)($_POST['order']??count($playlist)+1),'title'=>trim($_POST['title']??''),'artist'=>trim($_POST['artist']??''),'album'=>trim($_POST['album']??''),'year'=>trim($_POST['year']??''),'file'=>$mp3,'cover'=>$cover,'description'=>trim($_POST['description']??''),'rights'=>['author'=>trim($_POST['rights_author']??''),'license'=>trim($_POST['rights_license']??''),'origin'=>trim($_POST['rights_origin']??''),'ai_assisted'=>!empty($_POST['rights_ai_assisted']),'notes'=>trim($_POST['rights_notes']??'')],'created_at'=>now_iso8601()];
+ atomic_write_json(PLAYLIST_FILE,$playlist); redirect('/admin/dashboard.php'); }
+app_header('Nuovo brano'); echo '<main class="container"><h1>Aggiungi brano</h1><form method="post" enctype="multipart/form-data">'.csrf_input().'<label>Titolo<input name="title" required></label><label>Artista<input name="artist" required></label><label>Album<input name="album"></label><label>Anno<input name="year"></label><label>Ordine<input name="order" type="number" min="1" value="1"></label><label>MP3<input name="track_file" type="file" accept="audio/mpeg" required></label><label>Copertina<input name="cover_file" type="file" accept="image/*"></label><label>Descrizione<textarea name="description"></textarea></label><h2>Diritti</h2><label>Autore<input name="rights_author" required></label><label>Licenza<input name="rights_license" required></label><label>Origine<input name="rights_origin" required></label><label><input type="checkbox" name="rights_ai_assisted"> AI assisted</label><label>Note<textarea name="rights_notes"></textarea></label><button>Salva</button></form></main>'; app_footer();
